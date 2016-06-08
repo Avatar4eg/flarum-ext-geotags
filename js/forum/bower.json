@@ -1,0 +1,6 @@
+{
+  "name": "avatar4eg-geotags-forum",
+  "devDependencies": {
+    "jquery-locationpicker-plugin": "^0.1.12"
+  }
+}

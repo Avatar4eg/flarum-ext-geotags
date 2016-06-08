@@ -1,0 +1,31 @@
+{
+  "name": "avatar4eg/flarum-ext-geotags",
+  "description": "Geotags for Flarum forum messages.",
+  "type": "flarum-extension",
+  "keywords": ["geotag", "map"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Nikolai Morozov",
+      "email": "avanmorozov@gmail.com"
+    }
+  ],
+  "require": {
+    "flarum/core": "^0.1.0-beta.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Avatar4eg\\Geotags\\": "src/"
+    }
+  },
+  "extra": {
+    "flarum-extension": {
+      "title": "Geotags",
+      "icon": {
+        "name": "map-marker",
+        "backgroundColor": "#000",
+        "color": "#87d37c"
+      }
+    }
+  }
+}

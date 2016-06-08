@@ -1,0 +1,23 @@
+avatar4eg-geotags:
+    admin:
+        permissions:
+            add_geotags_label: Add geotags
+    forum:
+        buttons:
+            add: Add
+            save: Save
+        edit:
+            headtitle: Mark the spot
+        map:
+            labels:
+                location: Location
+                title: Title
+                address: Address
+                coordinates: Coordinates
+                latitude: Latitude
+                longitude: Longitude
+            default:
+                title: Interesting place
+        post:
+            geotags: Geotags
+            geotag-delete: Delete

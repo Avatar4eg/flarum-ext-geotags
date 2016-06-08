@@ -1,0 +1,24 @@
+avatar4eg-geotags:
+    admin:
+        permissions:
+            add_geotags_label: Добавлять геотеги
+    forum:
+        buttons:
+            add: Добавить
+            save: Сохранить
+        edit:
+            headtitle: Отметьте место
+        map:
+            labels:
+                location: Расположение
+                title: Название
+                address: Адрес
+                coordinates: Координаты
+                latitude: Широта
+                longitude: Долгота
+            default:
+                title: Интересное место
+        post:
+            geotags: Места
+            geotag-delete: Удалить
+
