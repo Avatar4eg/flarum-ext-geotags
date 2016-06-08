@@ -35,7 +35,7 @@ class CreateGeotagHandler
     {
         $this->assertCan(
             $command->actor,
-            'avatar4eg.geotags.add'
+            'avatar4eg.geotags.create'
         );
 
         $data = $command->data;
