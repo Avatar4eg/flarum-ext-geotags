@@ -20,4 +20,6 @@ avatar4eg-geotags:
                 title: Interesting place
         post:
             geotags: Geotags
+            geotag-add: Add geotag
+            geotag-loading: Loading
             geotag-delete: Delete

@@ -1,10 +1,12 @@
+import app from 'flarum/app';
+
 import Modal from 'flarum/components/Modal';
 import FieldSet from 'flarum/components/FieldSet';
 import Button from 'flarum/components/Button';
 
 export default class GeotagCreateModal extends Modal {
     init() {
-        this.textAreaObj = null;
+        this.textAreaObj = this.props.textAreaObj;
         this.loading = false;
 
         this.geotag = app.store.createRecord('geotags');
@@ -102,8 +104,8 @@ export default class GeotagCreateModal extends Modal {
                 parent.textAreaObj.relationValue.geotags.push(value);
             },
             response => {
-                this.loading = false;
-                this.handleErrors(response);
+                parent.loading = false;
+                parent.handleErrors(response);
             }
         );
     }

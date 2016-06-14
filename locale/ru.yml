@@ -1,7 +1,7 @@
 avatar4eg-geotags:
     admin:
         permissions:
-            add_geotags_label: Добавлять геотеги
+            add_geotags_label: Добавлять места
     forum:
         buttons:
             add: Добавить
@@ -20,5 +20,7 @@ avatar4eg-geotags:
                 title: Интересное место
         post:
             geotags: Места
+            geotag-add: Добавить место
+            geotag-loading: Добавляем
             geotag-delete: Удалить
 
