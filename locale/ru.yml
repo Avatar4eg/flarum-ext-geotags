@@ -2,6 +2,9 @@ avatar4eg-geotags:
     admin:
         permissions:
             add_geotags_label: Добавлять места
+        settings:
+            title: Настройки Geotags
+            label: Api-ключ Google Maps
     forum:
         buttons:
             add: Добавить
