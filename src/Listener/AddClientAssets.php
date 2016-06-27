@@ -32,7 +32,7 @@ class AddClientAssets
             ]);
             $event->addBootstrapper('avatar4eg/geotags/main');
 
-            $event->view->addFootString('<script src="https://maps.google.com/maps/api/js?key=' . $this->settings->get('avatar4eg.geotags-gmaps-key') . '&sensor=false&libraries=places"></script>');
+            $event->view->addFootString('<script src="https://maps.google.com/maps/api/js?key=' . $this->settings->get('avatar4eg.geotags-gmaps-key') . '&sensor=false&libraries=places" type="text/javascript"></script>');
         }
 
         if ($event->isAdmin()) {
