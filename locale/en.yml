@@ -5,24 +5,25 @@ avatar4eg-geotags:
         settings:
             title: Geotags Settings
             label: Google Maps Api-key
+
     forum:
-        buttons:
-            add: Add
-            save: Save
-        edit:
-            headtitle: Mark the spot
-        map:
-            labels:
-                location: Location
-                title: Title
-                address: Address
-                coordinates: Coordinates
-                latitude: Latitude
-                longitude: Longitude
-            default:
-                title: Interesting place
+        create_modal:
+            default_title: New place
+            title_label: Title
+            address_label: Address
+            coordinates_label: Coordinates
+            latitude_label: Latitude
+            longitude_label: Longitude
+            save_button: Save
+        view_modal:
+        list_modal:
+            geotags_title: => avatar4eg-geotags.ref.geotags
+            geotags_add_title: Add new place
+            geotags_list_title: Existing places
         post:
-            geotags: Geotags
-            geotag-add: Add geotag
-            geotag-loading: Loading
-            geotag-delete: Delete
+            geotags_title: => avatar4eg-geotags.ref.geotags
+            geotag_editor_tooltip: Edit places
+            geotag_delete_tooltip: Delete
+
+    ref:
+        geotags: Places

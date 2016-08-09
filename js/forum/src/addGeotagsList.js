@@ -30,7 +30,7 @@ export default function() {
             items.add('geotags', [
                 m('div', {className: 'Post-geotags'}, [
                     icon('map-marker'),
-                    app.translator.trans('avatar4eg-geotags.forum.post.geotags') + ': ',
+                    app.translator.trans('avatar4eg-geotags.forum.post.geotags_title') + ': ',
                     punctuateSeries(titles)
                 ])
             ])

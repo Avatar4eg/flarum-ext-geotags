@@ -1,4 +1,4 @@
-/*! jquery-locationpicker - v0.12.0 - 2015-01-05 */
+/*! jquery-locationpicker - v0.1.13 - 2016-03-11 */
 (function($) {
     function GMapContext(domElement, options) {
         var _map = new google.maps.Map(domElement, options);
@@ -6,7 +6,8 @@
             position: new google.maps.LatLng(54.19335, -3.92695),
             map: _map,
             title: "Drag Me",
-            draggable: options.draggable
+            draggable: options.draggable,
+            icon: options.markerIcon !== undefined ? options.markerIcon : undefined
         });
         return {
             map: _map,
@@ -143,8 +144,10 @@
                 });
             }
             if (inputBinding.locationNameInput && gmapContext.settings.enableAutocomplete) {
+                var blur = false;
                 gmapContext.autocomplete = new google.maps.places.Autocomplete(inputBinding.locationNameInput.get(0));
                 google.maps.event.addListener(gmapContext.autocomplete, "place_changed", function() {
+                    blur = false;
                     var place = gmapContext.autocomplete.getPlace();
                     if (!place.geometry) {
                         gmapContext.settings.onlocationnotfound(place.name);
@@ -155,6 +158,35 @@
                         context.settings.onchanged.apply(gmapContext.domContainer, [ GmUtility.locationFromLatLng(context.location), context.radius, false ]);
                     });
                 });
+                if (gmapContext.settings.enableAutocompleteBlur) {
+                    inputBinding.locationNameInput.on("change", function(e) {
+                        if (!e.originalEvent) {
+                            return;
+                        }
+                        blur = true;
+                    });
+                    inputBinding.locationNameInput.on("blur", function(e) {
+                        if (!e.originalEvent) {
+                            return;
+                        }
+                        setTimeout(function() {
+                            var address = $(inputBinding.locationNameInput).val();
+                            if (address.length > 5 && blur) {
+                                blur = false;
+                                gmapContext.geodecoder.geocode({
+                                    address: address
+                                }, function(results, status) {
+                                    if (status == google.maps.GeocoderStatus.OK && results && results.length) {
+                                        GmUtility.setPosition(gmapContext, results[0].geometry.location, function(context) {
+                                            updateInputValues(inputBinding, context);
+                                            context.settings.onchanged.apply(gmapContext.domContainer, [ GmUtility.locationFromLatLng(context.location), context.radius, false ]);
+                                        });
+                                    }
+                                });
+                            }
+                        }, 1e3);
+                    });
+                }
             }
             if (inputBinding.latitudeInput) {
                 inputBinding.latitudeInput.on("change", function(e) {
@@ -183,6 +215,17 @@
         setTimeout(function() {
             gmapContext.map.setCenter(gmapContext.marker.position);
         }, 300);
+    }
+    function updateMap(gmapContext, $target, options) {
+        var settings = $.extend({}, $.fn.locationpicker.defaults, options), latNew = settings.location.latitude, lngNew = settings.location.longitude, radiusNew = settings.radius, latOld = gmapContext.settings.location.latitude, lngOld = gmapContext.settings.location.longitude, radiusOld = gmapContext.settings.radius;
+        if (latNew == latOld && lngNew == lngOld && radiusNew == radiusOld) return;
+        gmapContext.settings.location.latitude = latNew;
+        gmapContext.settings.location.longitude = lngNew;
+        gmapContext.radius = radiusNew;
+        GmUtility.setPosition(gmapContext, new google.maps.LatLng(gmapContext.settings.location.latitude, gmapContext.settings.location.longitude), function(context) {
+            setupInputListenersInput(gmapContext.settings.inputBinding, gmapContext);
+            context.settings.oninitialized($target);
+        });
     }
     $.fn.locationpicker = function(options, params) {
         if (typeof options == "string") {
@@ -242,7 +285,10 @@
         }
         return this.each(function() {
             var $target = $(this);
-            if (isPluginApplied(this)) return;
+            if (isPluginApplied(this)) {
+                updateMap(getContextForElement(this), $(this), options);
+                return;
+            }
             var settings = $.extend({}, $.fn.locationpicker.defaults, options);
             var gmapContext = new GMapContext(this, {
                 zoom: settings.zoom,
@@ -255,7 +301,8 @@
                 radius: settings.radius,
                 locationName: settings.locationName,
                 settings: settings,
-                draggable: settings.draggable
+                draggable: settings.draggable,
+                markerIcon: settings.markerIcon
             });
             $target.data("locationpicker", gmapContext);
             google.maps.event.addListener(gmapContext.marker, "dragend", function(event) {
@@ -275,7 +322,7 @@
     $.fn.locationpicker.defaults = {
         location: {
             latitude: 40.7324319,
-            longitude: -73.82480799999996
+            longitude: -73.82480777777776
         },
         locationName: "",
         radius: 500,
@@ -288,11 +335,13 @@
             locationNameInput: null
         },
         enableAutocomplete: false,
+        enableAutocompleteBlur: false,
         enableReverseGeocode: true,
         draggable: true,
         onchanged: function(currentLocation, radius, isMarkerDropped) {},
         onlocationnotfound: function(locationName) {},
-        oninitialized: function(component) {}
+        oninitialized: function(component) {},
+        markerIcon: undefined
     };
 })(jQuery);;
 'use strict';
@@ -318,7 +367,7 @@ System.register('avatar4eg/geotags/addGeotagsList', ['flarum/extend', 'flarum/ap
                     }
                 });
 
-                items.add('geotags', [m('div', { className: 'Post-geotags' }, [icon('map-marker'), app.translator.trans('avatar4eg-geotags.forum.post.geotags') + ': ', punctuateSeries(titles)])]);
+                items.add('geotags', [m('div', { className: 'Post-geotags' }, [icon('map-marker'), app.translator.trans('avatar4eg-geotags.forum.post.geotags_title') + ': ', punctuateSeries(titles)])]);
             }
         });
     });
@@ -373,10 +422,12 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
 
                         this.geotag = app.store.createRecord('geotags');
 
-                        this.itemTitle = m.prop(app.translator.trans('avatar4eg-geotags.forum.map.default.title')[0]);
-                        this.lat = m.prop(59.950179);
-                        this.lng = m.prop(30.316147);
-                        this.country = m.prop('RU');
+                        this.geotagData = {
+                            title: m.prop(app.translator.trans('avatar4eg-geotags.forum.create_modal.default_title')[0]),
+                            lat: m.prop(59.950179),
+                            lng: m.prop(30.316147),
+                            country: m.prop('RU')
+                        };
                     }
                 }, {
                     key: 'className',
@@ -386,33 +437,32 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                 }, {
                     key: 'title',
                     value: function title() {
-                        var title = this.itemTitle();
-                        return title ? title : app.translator.trans('avatar4eg-geotags.forum.edit.headtitle');
+                        var title = this.geotagData.title();
+                        return title ? title : app.translator.trans('avatar4eg-geotags.forum.create_modal.default_title');
                     }
                 }, {
                     key: 'content',
                     value: function content() {
-                        return [m('div', { className: 'Modal-body' }, [m('div', { className: 'map-form-container' }, [m('form', { onsubmit: this.onsubmit.bind(this), config: this.loadLocationPicker.bind(this) }, [m('div', { className: 'Map-address' }, [FieldSet.component({
-                            label: app.translator.trans('avatar4eg-geotags.forum.map.labels.location'),
-                            children: [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.map.labels.title')), m('input', {
-                                className: 'FormControl Map-address-title',
-                                value: this.itemTitle(),
-                                oninput: m.withAttr('value', this.itemTitle)
-                            }), m('label', {}, app.translator.trans('avatar4eg-geotags.forum.map.labels.address')), m('input', {
-                                className: 'FormControl Map-address-search'
-                            })]
-                        })]), m('div', { className: 'Map-field', style: { 'width': '100%', 'height': '400px' } }), m('div', { className: 'Map-coordinates' }, [FieldSet.component({
-                            label: app.translator.trans('avatar4eg-geotags.forum.map.labels.coordinates'),
-                            children: [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.map.labels.latitude')), m('input', {
+                        return [m('div', { className: 'Modal-body' }, [m('div', { className: 'map-form-container' }, [m('form', { onsubmit: this.onsubmit.bind(this), config: this.loadLocationPicker.bind(this) }, [m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.title_label')), m('input', {
+                            className: 'FormControl Map-address-title',
+                            value: this.geotagData.title(),
+                            oninput: m.withAttr('value', this.geotagData.title)
+                        })]), m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.address_label')), m('input', {
+                            className: 'FormControl Map-address-search'
+                        })]), m('div', { className: 'Map-field', style: { 'width': '100%', 'height': '400px', 'margin-bottom': '20px' } }), FieldSet.component({
+                            className: 'Map-coordinates',
+                            label: app.translator.trans('avatar4eg-geotags.forum.create_modal.coordinates_label') + ':',
+                            children: [m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.latitude_label')), m('input', {
                                 className: 'FormControl Map-coordinates-lat'
-                            }), m('label', {}, app.translator.trans('avatar4eg-geotags.forum.map.labels.longitude')), m('input', {
+                            })]), m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.longitude_label')), m('input', {
                                 className: 'FormControl Map-coordinates-lng'
-                            })]
-                        })]), Button.component({
+                            })])]
+                        }), Button.component({
                             type: 'submit',
                             className: 'Button Button--primary',
-                            children: app.translator.trans('avatar4eg-geotags.forum.buttons.save'),
-                            loading: this.loading
+                            children: app.translator.trans('avatar4eg-geotags.forum.create_modal.save_button'),
+                            loading: this.loading,
+                            disabled: this.geotagData.title() === ''
                         })])])])];
                     }
                 }, {
@@ -422,27 +472,19 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                         if (this.loading) return;
                         this.loading = true;
 
-                        var markdownString = '**' + this.itemTitle() + '**';
+                        var markdownString = '**' + this.geotagData.title() + '**';
 
                         this.textAreaObj.insertAtCursor(markdownString);
                         if (this.textAreaObj.props.preview) {
                             this.textAreaObj.props.preview();
                         }
 
-                        var data = {
-                            title: this.itemTitle(),
-                            lat: this.lat(),
-                            lng: this.lng(),
-                            country: this.country()
-                        };
-
                         var parent = this;
-                        this.geotag.save(data).then(function (value) {
+                        this.geotag.save(this.geotagData).then(function (value) {
                             parent.hide();
                             parent.textAreaObj.relationValue.geotags.push(value);
                         }, function (response) {
                             parent.loading = false;
-                            parent.handleErrors(response);
                         });
                     }
                 }, {
@@ -460,7 +502,7 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                         var parent = this;
                         var map_field = $(element).find('.Map-field');
                         map_field.locationpicker({
-                            location: { latitude: parent.lat(), longitude: parent.lng() },
+                            location: { latitude: parent.geotagData.lat(), longitude: parent.geotagData.lng() },
                             radius: 0,
                             inputBinding: {
                                 locationNameInput: $(element).find('.Map-address-search'),
@@ -469,10 +511,10 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                             },
                             enableAutocomplete: true,
                             onchanged: function onchanged(currentLocation, isMarkerDropped) {
-                                parent.lat(currentLocation.latitude);
-                                parent.lng(currentLocation.longitude);
+                                parent.geotagData.lat(currentLocation.latitude);
+                                parent.geotagData.lng(currentLocation.longitude);
                                 var addressComponents = $(this).locationpicker('map').location.addressComponents;
-                                parent.country(addressComponents.country);
+                                parent.geotagData.country(addressComponents.country);
                             }
                         });
 
@@ -487,6 +529,93 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
             }(Modal);
 
             _export('default', GeotagCreateModal);
+        }
+    };
+});;
+'use strict';
+
+System.register('avatar4eg/geotags/components/GeotagListModal', ['flarum/app', 'flarum/components/Modal', 'flarum/components/Button', 'flarum/components/FieldSet', 'avatar4eg/geotags/components/GeotagModal', 'avatar4eg/geotags/components/GeotagCreateModal'], function (_export, _context) {
+    var app, Modal, Button, FieldSet, GeotagModal, GeotagCreateModal, GeotagListModal;
+    return {
+        setters: [function (_flarumApp) {
+            app = _flarumApp.default;
+        }, function (_flarumComponentsModal) {
+            Modal = _flarumComponentsModal.default;
+        }, function (_flarumComponentsButton) {
+            Button = _flarumComponentsButton.default;
+        }, function (_flarumComponentsFieldSet) {
+            FieldSet = _flarumComponentsFieldSet.default;
+        }, function (_avatar4egGeotagsComponentsGeotagModal) {
+            GeotagModal = _avatar4egGeotagsComponentsGeotagModal.default;
+        }, function (_avatar4egGeotagsComponentsGeotagCreateModal) {
+            GeotagCreateModal = _avatar4egGeotagsComponentsGeotagCreateModal.default;
+        }],
+        execute: function () {
+            GeotagListModal = function (_Modal) {
+                babelHelpers.inherits(GeotagListModal, _Modal);
+
+                function GeotagListModal() {
+                    babelHelpers.classCallCheck(this, GeotagListModal);
+                    return babelHelpers.possibleConstructorReturn(this, Object.getPrototypeOf(GeotagListModal).apply(this, arguments));
+                }
+
+                babelHelpers.createClass(GeotagListModal, [{
+                    key: 'init',
+                    value: function init() {
+                        this.textAreaObj = this.props.textAreaObj;
+                    }
+                }, {
+                    key: 'className',
+                    value: function className() {
+                        return 'GeotagListModal Modal--small';
+                    }
+                }, {
+                    key: 'title',
+                    value: function title() {
+                        return app.translator.trans('avatar4eg-geotags.forum.list_modal.geotags_title');
+                    }
+                }, {
+                    key: 'content',
+                    value: function content() {
+                        var parent = this;
+                        var geotags = this.textAreaObj.relationValue.geotags;
+
+                        return [m('div', { className: 'Modal-body' }, [FieldSet.component({
+                            className: 'Geotags-list',
+                            label: app.translator.trans('avatar4eg-geotags.forum.list_modal.geotags_list_title') + ':',
+                            children: [geotags.map(function (geotag, i) {
+                                return [m('li', { className: 'Geotags-item' }, [m('a', {
+                                    href: '#',
+                                    onclick: function onclick(e) {
+                                        e.preventDefault();
+                                        parent.hide();
+                                        app.modal.show(new GeotagModal({ geotag: geotag }));
+                                    }
+                                }, geotag.title()), Button.component({
+                                    className: 'Button Button--icon Button--link',
+                                    icon: 'times',
+                                    title: app.translator.trans('avatar4eg-geotags.forum.post.geotag_delete_tooltip'),
+                                    onclick: function onclick() {
+                                        geotag.delete();
+                                        geotags.splice(i, 1);
+                                    }
+                                })])];
+                            })]
+                        }), Button.component({
+                            className: 'Button Button--primary',
+                            children: app.translator.trans('avatar4eg-geotags.forum.list_modal.geotags_add_title'),
+                            onclick: function onclick(e) {
+                                e.preventDefault();
+                                parent.hide();
+                                app.modal.show(new GeotagCreateModal({ 'textAreaObj': parent.textAreaObj }));
+                            }
+                        })])];
+                    }
+                }]);
+                return GeotagListModal;
+            }(Modal);
+
+            _export('default', GeotagListModal);
         }
     };
 });;
@@ -568,8 +697,8 @@ System.register('avatar4eg/geotags/components/GeotagModal', ['flarum/components/
 });;
 'use strict';
 
-System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'flarum/app', 'flarum/helpers/icon', 'flarum/components/TextEditor', 'flarum/components/Button', 'avatar4eg/geotags/models/Geotag', 'avatar4eg/geotags/components/GeotagCreateModal', 'avatar4eg/geotags/components/GeotagModal'], function (_export, _context) {
-    var extend, app, icon, TextEditor, Button, Geotag, GeotagCreateModal, GeotagModal;
+System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'flarum/app', 'flarum/helpers/icon', 'flarum/components/TextEditor', 'avatar4eg/geotags/components/GeotagListModal', 'avatar4eg/geotags/components/GeotagCreateModal'], function (_export, _context) {
+    var extend, app, icon, TextEditor, GeotagListModal, GeotagCreateModal;
 
     _export('default', function () {
         extend(TextEditor.prototype, 'init', function () {
@@ -580,46 +709,26 @@ System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'fla
         extend(TextEditor.prototype, 'controlItems', function (items) {
             if (!app.forum.attribute('canAddGeotags')) return;
             var textAreaObj = this;
+            var geotagsNum = textAreaObj.relationValue.geotags && textAreaObj.relationValue.geotags.length ? textAreaObj.relationValue.geotags.length : 0;
 
             items.add('avatar4eg-geotags', m('div', {
                 className: 'Button hasIcon avatar4eg-geotags-button Button--icon',
                 onclick: function onclick(e) {
                     e.preventDefault();
-                    app.modal.show(new GeotagCreateModal({ textAreaObj: textAreaObj }));
+                    if (geotagsNum > 0) {
+                        app.modal.show(new GeotagListModal({ textAreaObj: textAreaObj }));
+                    } else {
+                        app.modal.show(new GeotagCreateModal({ textAreaObj: textAreaObj }));
+                    }
                 }
-            }, [icon('map-marker', { className: 'Button-icon' }), m('span', { className: 'Button-label' }, app.translator.trans('avatar4eg-geotags.forum.post.geotag-add'))]), -1);
+            }, [icon('map-marker', { className: 'Button-icon' }), geotagsNum > 0 ? m('span', { className: 'Button-label-num' }, geotagsNum) : '', m('span', { className: 'Button-label' }, app.translator.trans('avatar4eg-geotags.forum.post.geotag_editor_tooltip'))]), -1);
 
             $('.Button-label', '.item-avatar4eg-geotags > div').hide();
             $('.item-avatar4eg-geotags > div').hover(function () {
-                $('.Button-label', this).show();$(this).removeClass('Button--icon');
+                $('.Button-label', this).show();$('.Button-label-num', this).hide();$(this).removeClass('Button--icon');
             }, function () {
-                $('.Button-label', this).hide();$(this).addClass('Button--icon');
+                $('.Button-label', this).hide();$('.Button-label-num', this).show();$(this).addClass('Button--icon');
             });
-
-            var geotags = this.relationValue.geotags;
-            if (geotags && geotags.length) {
-                var titles = geotags.map(function (geotag, i) {
-                    if (geotag instanceof Geotag) {
-                        return [m('a', {
-                            href: '#',
-                            onclick: function onclick(e) {
-                                e.preventDefault();
-                                app.modal.show(new GeotagModal({ geotag: geotag }));
-                            }
-                        }, geotag.title()), Button.component({
-                            className: 'Button Button--icon Button--link',
-                            icon: 'times',
-                            title: app.translator.trans('avatar4eg-geotags.forum.post.geotag-delete'),
-                            onclick: function onclick() {
-                                geotag.delete();
-                                geotags.splice(i, 1);
-                            }
-                        })];
-                    }
-                });
-
-                items.add('geotags', m('div', { className: 'Post-geotags-editing' }, titles), -1000);
-            }
         });
     });
 
@@ -632,14 +741,10 @@ System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'fla
             icon = _flarumHelpersIcon.default;
         }, function (_flarumComponentsTextEditor) {
             TextEditor = _flarumComponentsTextEditor.default;
-        }, function (_flarumComponentsButton) {
-            Button = _flarumComponentsButton.default;
-        }, function (_avatar4egGeotagsModelsGeotag) {
-            Geotag = _avatar4egGeotagsModelsGeotag.default;
+        }, function (_avatar4egGeotagsComponentsGeotagListModal) {
+            GeotagListModal = _avatar4egGeotagsComponentsGeotagListModal.default;
         }, function (_avatar4egGeotagsComponentsGeotagCreateModal) {
             GeotagCreateModal = _avatar4egGeotagsComponentsGeotagCreateModal.default;
-        }, function (_avatar4egGeotagsComponentsGeotagModal) {
-            GeotagModal = _avatar4egGeotagsComponentsGeotagModal.default;
         }],
         execute: function () {}
     };

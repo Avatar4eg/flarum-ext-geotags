@@ -5,25 +5,25 @@ avatar4eg-geotags:
         settings:
             title: Настройки Geotags
             label: Api-ключ Google Maps
-    forum:
-        buttons:
-            add: Добавить
-            save: Сохранить
-        edit:
-            headtitle: Отметьте место
-        map:
-            labels:
-                location: Расположение
-                title: Название
-                address: Адрес
-                coordinates: Координаты
-                latitude: Широта
-                longitude: Долгота
-            default:
-                title: Интересное место
-        post:
-            geotags: Места
-            geotag-add: Добавить место
-            geotag-loading: Добавляем
-            geotag-delete: Удалить
 
+    forum:
+        create_modal:
+            default_title: Новое место
+            title_label: Название
+            address_label: Адрес
+            coordinates_label: Координаты
+            latitude_label: Широта
+            longitude_label: Долгота
+            save_button: Сохранить
+        view_modal:
+        list_modal:
+            geotags_title: => avatar4eg-geotags.ref.geotags
+            geotags_add_title: Добавить новое место
+            geotags_list_title: Добавленные места
+        post:
+            geotags_title: => avatar4eg-geotags.ref.geotags
+            geotag_editor_tooltip: Редактировать места
+            geotag_delete_tooltip: Удалить
+
+    ref:
+        geotags: Места
