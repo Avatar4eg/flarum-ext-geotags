@@ -25,12 +25,12 @@ System.register('avatar4eg/geotags/components/GeotagsSettingsModal', ['flarum/ap
                 }, {
                     key: 'title',
                     value: function title() {
-                        return app.translator.trans('avatar4eg-geotags.admin.settings.title');
+                        return app.translator.trans('avatar4eg-geotags.admin.settings.modal_title');
                     }
                 }, {
                     key: 'form',
                     value: function form() {
-                        return [m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.admin.settings.label')), m('input', {
+                        return [m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.admin.settings.api_label')), m('input', {
                             className: 'FormControl',
                             bidi: this.setting('avatar4eg.geotags-gmaps-key')
                         })])];

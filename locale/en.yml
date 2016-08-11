@@ -3,8 +3,8 @@ avatar4eg-geotags:
         permissions:
             add_geotags_label: Add geotags
         settings:
-            title: Geotags Settings
-            label: Google Maps Api-key
+            modal_title: Geotags Settings
+            api_label: Google Maps Api-key
 
     forum:
         create_modal:

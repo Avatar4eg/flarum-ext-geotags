@@ -21,7 +21,7 @@ export default class GeotagListModal extends Modal {
 
     content() {
         var parent = this;
-        var geotags = this.textAreaObj.relationValue.geotags;
+        var geotags = parent.textAreaObj.geotags;
 
         return [
             m('div', {className: 'Modal-body'}, [
@@ -45,7 +45,6 @@ export default class GeotagListModal extends Modal {
                                         icon: 'times',
                                         title: app.translator.trans('avatar4eg-geotags.forum.post.geotag_delete_tooltip'),
                                         onclick: function () {
-                                            geotag.delete();
                                             geotags.splice(i, 1);
                                         }
                                     })

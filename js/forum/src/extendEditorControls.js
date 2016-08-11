@@ -7,17 +7,21 @@ import GeotagListModal from 'avatar4eg/geotags/components/GeotagListModal';
 import GeotagCreateModal from 'avatar4eg/geotags/components/GeotagCreateModal';
 
 export default function() {
+    TextEditor.prototype.geotags = [];
+    TextEditor.prototype.originalGeotags = [];
+
     extend(TextEditor.prototype, 'init', function()
     {
-        this.relationValue = this.relationValue || {};
-        this.relationValue.geotags = [];
+        this.geotags = [];
+        this.originalGeotags = [];
     });
 
     extend(TextEditor.prototype, 'controlItems', function(items)
     {
         if (!app.forum.attribute('canAddGeotags')) return;
+
         var textAreaObj = this;
-        var geotagsNum = textAreaObj.relationValue.geotags && textAreaObj.relationValue.geotags.length ? textAreaObj.relationValue.geotags.length : 0;
+        var geotagsNum = textAreaObj.geotags && textAreaObj.geotags.length ? textAreaObj.geotags.length : 0;
 
         items.add('avatar4eg-geotags',
             m('div', {

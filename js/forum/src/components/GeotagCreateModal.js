@@ -8,14 +8,14 @@ export default class GeotagCreateModal extends Modal {
         this.textAreaObj = this.props.textAreaObj;
         this.loading = false;
 
-        this.geotag = app.store.createRecord('geotags');
-
         this.geotagData = {
             title: m.prop(app.translator.trans('avatar4eg-geotags.forum.create_modal.default_title')[0]),
             lat: m.prop(59.950179),
             lng: m.prop(30.316147),
             country: m.prop('RU')
         };
+
+        this.geotag = app.store.createRecord('geotags');
     }
 
     className() {
@@ -70,7 +70,7 @@ export default class GeotagCreateModal extends Modal {
                             className: 'Button Button--primary',
                             children: app.translator.trans('avatar4eg-geotags.forum.create_modal.save_button'),
                             loading: this.loading,
-                            disabled: this.geotagData.title() === ''
+                            disabled: this.geotagData.title() === '' || this.geotagData.title() === null
                         })
                     ])
                 ])
@@ -90,15 +90,15 @@ export default class GeotagCreateModal extends Modal {
             this.textAreaObj.props.preview();
         }
 
-        var parent = this;
-        this.geotag.save(this.geotagData).then(function(value) {
-                parent.hide();
-                parent.textAreaObj.relationValue.geotags.push(value);
-            },
-            response => {
-                parent.loading = false
-            }
-        );
+        this.geotag.pushAttributes({
+            title: this.geotagData.title(),
+            lat: this.geotagData.lat(),
+            lng: this.geotagData.lng(),
+            country: this.geotagData.country()
+        });
+        this.textAreaObj.geotags.push(this.geotag);
+        this.loading = false;
+        this.hide();
     }
 
     getLocation(map_field) {

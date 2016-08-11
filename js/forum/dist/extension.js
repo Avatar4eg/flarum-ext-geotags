@@ -420,14 +420,14 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                         this.textAreaObj = this.props.textAreaObj;
                         this.loading = false;
 
-                        this.geotag = app.store.createRecord('geotags');
-
                         this.geotagData = {
                             title: m.prop(app.translator.trans('avatar4eg-geotags.forum.create_modal.default_title')[0]),
                             lat: m.prop(59.950179),
                             lng: m.prop(30.316147),
                             country: m.prop('RU')
                         };
+
+                        this.geotag = app.store.createRecord('geotags');
                     }
                 }, {
                     key: 'className',
@@ -462,7 +462,7 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                             className: 'Button Button--primary',
                             children: app.translator.trans('avatar4eg-geotags.forum.create_modal.save_button'),
                             loading: this.loading,
-                            disabled: this.geotagData.title() === ''
+                            disabled: this.geotagData.title() === '' || this.geotagData.title() === null
                         })])])])];
                     }
                 }, {
@@ -479,13 +479,15 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                             this.textAreaObj.props.preview();
                         }
 
-                        var parent = this;
-                        this.geotag.save(this.geotagData).then(function (value) {
-                            parent.hide();
-                            parent.textAreaObj.relationValue.geotags.push(value);
-                        }, function (response) {
-                            parent.loading = false;
+                        this.geotag.pushAttributes({
+                            title: this.geotagData.title(),
+                            lat: this.geotagData.lat(),
+                            lng: this.geotagData.lng(),
+                            country: this.geotagData.country()
                         });
+                        this.textAreaObj.geotags.push(this.geotag);
+                        this.loading = false;
+                        this.hide();
                     }
                 }, {
                     key: 'getLocation',
@@ -578,7 +580,7 @@ System.register('avatar4eg/geotags/components/GeotagListModal', ['flarum/app', '
                     key: 'content',
                     value: function content() {
                         var parent = this;
-                        var geotags = this.textAreaObj.relationValue.geotags;
+                        var geotags = parent.textAreaObj.geotags;
 
                         return [m('div', { className: 'Modal-body' }, [FieldSet.component({
                             className: 'Geotags-list',
@@ -596,7 +598,6 @@ System.register('avatar4eg/geotags/components/GeotagListModal', ['flarum/app', '
                                     icon: 'times',
                                     title: app.translator.trans('avatar4eg-geotags.forum.post.geotag_delete_tooltip'),
                                     onclick: function onclick() {
-                                        geotag.delete();
                                         geotags.splice(i, 1);
                                     }
                                 })])];
@@ -701,15 +702,19 @@ System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'fla
     var extend, app, icon, TextEditor, GeotagListModal, GeotagCreateModal;
 
     _export('default', function () {
+        TextEditor.prototype.geotags = [];
+        TextEditor.prototype.originalGeotags = [];
+
         extend(TextEditor.prototype, 'init', function () {
-            this.relationValue = this.relationValue || {};
-            this.relationValue.geotags = [];
+            this.geotags = [];
+            this.originalGeotags = [];
         });
 
         extend(TextEditor.prototype, 'controlItems', function (items) {
             if (!app.forum.attribute('canAddGeotags')) return;
+
             var textAreaObj = this;
-            var geotagsNum = textAreaObj.relationValue.geotags && textAreaObj.relationValue.geotags.length ? textAreaObj.relationValue.geotags.length : 0;
+            var geotagsNum = textAreaObj.geotags && textAreaObj.geotags.length ? textAreaObj.geotags.length : 0;
 
             items.add('avatar4eg-geotags', m('div', {
                 className: 'Button hasIcon avatar4eg-geotags-button Button--icon',
@@ -751,37 +756,74 @@ System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'fla
 });;
 'use strict';
 
-System.register('avatar4eg/geotags/extendPostData', ['flarum/extend', 'flarum/components/ReplyComposer', 'flarum/components/EditPostComposer', 'flarum/components/DiscussionComposer'], function (_export, _context) {
-    var extend, ReplyComposer, EditPostComposer, DiscussionComposer;
+System.register('avatar4eg/geotags/extendPostData', ['flarum/extend', 'flarum/components/ComposerBody', 'flarum/components/EditPostComposer', 'flarum/components/ReplyComposer', 'flarum/components/DiscussionComposer'], function (_export, _context) {
+    var extend, override, ComposerBody, EditPostComposer, ReplyComposer, DiscussionComposer;
 
     _export('default', function () {
+        ComposerBody.prototype.submitGeotags = function (originalSubmit) {
+            var geotags = this.editor.geotags;
+            var originalGeotags = this.editor.originalGeotags;
+
+            var deferreds = [];
+            this.loading = true;
+            $.each(originalGeotags, function (index, geotag) {
+                if (!geotags.includes(geotag)) {
+                    deferreds.push(geotag.delete());
+                }
+            });
+            $.each(geotags, function (index, geotag) {
+                if (!geotag.id() && !originalGeotags.includes(geotag)) {
+                    deferreds.push(geotag.save(geotag.data.attributes));
+                }
+            });
+            m.sync(deferreds).then(function () {
+                originalSubmit();
+            });
+        };
+
         extend(EditPostComposer.prototype, 'init', function () {
-            this.editor.relationValue.geotags = this.props.post.geotags();
+            this.editor.geotags = this.props.post.geotags();
+            this.editor.originalGeotags = this.props.post.geotags();
         });
 
         extend(EditPostComposer.prototype, 'data', function (data) {
             data.relationships = data.relationships || {};
-            data.relationships.geotags = this.editor.relationValue.geotags;
+            data.relationships.geotags = this.editor.geotags;
         });
 
         extend(ReplyComposer.prototype, 'data', function (data) {
             data.relationships = data.relationships || {};
-            data.relationships.geotags = this.editor.relationValue.geotags;
+            data.relationships.geotags = this.editor.geotags;
         });
 
         extend(DiscussionComposer.prototype, 'data', function (data) {
             data.relationships = data.relationships || {};
-            data.relationships.geotags = this.editor.relationValue.geotags;
+            data.relationships.geotags = this.editor.geotags;
+        });
+
+        override(EditPostComposer.prototype, 'onsubmit', function (original) {
+            this.submitGeotags(original);
+        });
+
+        override(ReplyComposer.prototype, 'onsubmit', function (original) {
+            this.submitGeotags(original);
+        });
+
+        override(DiscussionComposer.prototype, 'onsubmit', function (original) {
+            this.submitGeotags(original);
         });
     });
 
     return {
         setters: [function (_flarumExtend) {
             extend = _flarumExtend.extend;
-        }, function (_flarumComponentsReplyComposer) {
-            ReplyComposer = _flarumComponentsReplyComposer.default;
+            override = _flarumExtend.override;
+        }, function (_flarumComponentsComposerBody) {
+            ComposerBody = _flarumComponentsComposerBody.default;
         }, function (_flarumComponentsEditPostComposer) {
             EditPostComposer = _flarumComponentsEditPostComposer.default;
+        }, function (_flarumComponentsReplyComposer) {
+            ReplyComposer = _flarumComponentsReplyComposer.default;
         }, function (_flarumComponentsDiscussionComposer) {
             DiscussionComposer = _flarumComponentsDiscussionComposer.default;
         }],
