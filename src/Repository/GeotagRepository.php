@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class GeotagRepository
 {
+    public function query()
+    {
+        return Geotag::query();
+    }
+
     /**
      * @param integer $id
      * @param \Flarum\Core\User $actor
