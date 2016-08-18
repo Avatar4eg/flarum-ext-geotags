@@ -50,6 +50,9 @@ class ListGeotagsController extends AbstractCollectionController
         if ($postIds = array_get($filter, 'id')) {
             $geotags = $this->geotags->findByIds(explode(',', $postIds));
         } else {
+            if ($countryIso = array_get($filter, 'country')) {
+                $where['country'] = $countryIso;
+            }
             $geotags = $this->geotags->findWhere($where, $sort, $limit, $offset);
         }
 
