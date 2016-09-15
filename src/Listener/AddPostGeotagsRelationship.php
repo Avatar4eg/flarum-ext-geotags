@@ -54,7 +54,7 @@ class AddPostGeotagsRelationship
         $post = $event->post;
         $data = $event->data;
 
-        if (array_key_exists('geotags', $data['relationships'])) {
+        if (array_key_exists('relationships', $data) && array_key_exists('geotags', $data['relationships'])) {
             foreach ($data['relationships']['geotags']['data'] as $geotag_id) {
                 $geotag = Geotag::findOrFail($geotag_id['id']);
                 if($geotag) {
