@@ -6,15 +6,15 @@ Uses [Logicify JQuery Location Picker plugin](https://github.com/Logicify/jquery
 ### Screenshots
 
 Editor button:  
-![Imgur](https://i.imgur.com/cRcBNZ3.png)  
+![Imgur](https://i.imgur.com/4qruHNn.png)  
 Creation modal:  
-![Imgur](https://i.imgur.com/xqFZJJ5.png)  
+![Imgur](https://i.imgur.com/0wCkNcl.png)  
 Result of creation in text editor:  
-![Imgur](https://i.imgur.com/BHacaOE.png)  
+![Imgur](https://i.imgur.com/iE2icvn.png)  
 ...and in post:  
-![Imgur](https://i.imgur.com/pa2VVtn.png)  
+![Imgur](https://i.imgur.com/8duv1iQ.png)  
 ...and after clicking on it:  
-![Imgur](https://i.imgur.com/1eUynoG.png)  
+![Imgur](https://i.imgur.com/548kmnW.png)  
 
 ### Goals
 
