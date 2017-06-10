@@ -1,4 +1,4 @@
-/*! jquery-locationpicker - v0.1.13 - 2016-03-11 */
+/*! jquery-locationpicker - v0.1.15 - 2016-09-26 */
 (function($) {
     function GMapContext(domElement, options) {
         var _map = new google.maps.Map(domElement, options);
@@ -6,7 +6,8 @@
             position: new google.maps.LatLng(54.19335, -3.92695),
             map: _map,
             title: "Drag Me",
-            draggable: options.draggable,
+            visible: options.markerVisible,
+            draggable: options.markerDraggable,
             icon: options.markerIcon !== undefined ? options.markerIcon : undefined
         });
         return {
@@ -60,17 +61,7 @@
             gMapContext.map.panTo(location);
             this.drawCircle(gMapContext, location, gMapContext.radius, {});
             if (gMapContext.settings.enableReverseGeocode) {
-                gMapContext.geodecoder.geocode({
-                    latLng: gMapContext.location
-                }, function(results, status) {
-                    if (status == google.maps.GeocoderStatus.OK && results.length > 0) {
-                        gMapContext.locationName = results[0].formatted_address;
-                        gMapContext.addressComponents = GmUtility.address_component_from_google_geocode(results[0].address_components);
-                    }
-                    if (callback) {
-                        callback.call(this, gMapContext);
-                    }
-                });
+                this.updateLocationName(gMapContext, callback);
             } else {
                 if (callback) {
                     callback.call(this, gMapContext);
@@ -82,6 +73,33 @@
                 latitude: lnlg.lat(),
                 longitude: lnlg.lng()
             };
+        },
+        addressByFormat: function(addresses, format) {
+            var result = null;
+            for (var i = addresses.length - 1; i >= 0; i--) {
+                if (addresses[i].types.indexOf(format) >= 0) {
+                    result = addresses[i];
+                }
+            }
+            return result || addresses[0];
+        },
+        updateLocationName: function(gmapContext, callback) {
+            gmapContext.geodecoder.geocode({
+                latLng: gmapContext.marker.position
+            }, function(results, status) {
+                if (status == google.maps.GeocoderStatus.OK && results.length > 0) {
+                    var address = GmUtility.addressByFormat(results, gmapContext.settings.addressFormat);
+                    gmapContext.locationName = address.formatted_address;
+                    gmapContext.addressComponents = GmUtility.address_component_from_google_geocode(address.address_components);
+                } else if (status == google.maps.GeocoderStatus.OVER_QUERY_LIMIT) {
+                    return setTimeout(function() {
+                        GmUtility.updateLocationName(gmapContext, callback);
+                    }, 1e3);
+                }
+                if (callback) {
+                    callback.call(this, gmapContext);
+                }
+            });
         },
         address_component_from_google_geocode: function(address_components) {
             var result = {};
@@ -116,7 +134,7 @@
     }
     function updateInputValues(inputBinding, gmapContext) {
         if (!inputBinding) return;
-        var currentLocation = GmUtility.locationFromLatLng(gmapContext.location);
+        var currentLocation = GmUtility.locationFromLatLng(gmapContext.marker.position);
         if (inputBinding.latitudeInput) {
             inputBinding.latitudeInput.val(currentLocation.latitude).change();
         }
@@ -134,10 +152,11 @@
         if (inputBinding) {
             if (inputBinding.radiusInput) {
                 inputBinding.radiusInput.on("change", function(e) {
-                    if (!e.originalEvent) {
+                    var radiusInputValue = $(this).val();
+                    if (!e.originalEvent || isNaN(radiusInputValue)) {
                         return;
                     }
-                    gmapContext.radius = $(this).val();
+                    gmapContext.radius = radiusInputValue;
                     GmUtility.setPosition(gmapContext, gmapContext.location, function(context) {
                         context.settings.onchanged.apply(gmapContext.domContainer, [ GmUtility.locationFromLatLng(context.location), context.radius, false ]);
                     });
@@ -145,7 +164,7 @@
             }
             if (inputBinding.locationNameInput && gmapContext.settings.enableAutocomplete) {
                 var blur = false;
-                gmapContext.autocomplete = new google.maps.places.Autocomplete(inputBinding.locationNameInput.get(0));
+                gmapContext.autocomplete = new google.maps.places.Autocomplete(inputBinding.locationNameInput.get(0), gmapContext.settings.autocompleteOptions);
                 google.maps.event.addListener(gmapContext.autocomplete, "place_changed", function() {
                     blur = false;
                     var place = gmapContext.autocomplete.getPlace();
@@ -190,21 +209,25 @@
             }
             if (inputBinding.latitudeInput) {
                 inputBinding.latitudeInput.on("change", function(e) {
-                    if (!e.originalEvent) {
+                    var latitudeInputValue = $(this).val();
+                    if (!e.originalEvent || isNaN(latitudeInputValue)) {
                         return;
                     }
-                    GmUtility.setPosition(gmapContext, new google.maps.LatLng($(this).val(), gmapContext.location.lng()), function(context) {
+                    GmUtility.setPosition(gmapContext, new google.maps.LatLng(latitudeInputValue, gmapContext.location.lng()), function(context) {
                         context.settings.onchanged.apply(gmapContext.domContainer, [ GmUtility.locationFromLatLng(context.location), context.radius, false ]);
+                        updateInputValues(gmapContext.settings.inputBinding, gmapContext);
                     });
                 });
             }
             if (inputBinding.longitudeInput) {
                 inputBinding.longitudeInput.on("change", function(e) {
-                    if (!e.originalEvent) {
+                    var longitudeInputValue = $(this).val();
+                    if (!e.originalEvent || isNaN(longitudeInputValue)) {
                         return;
                     }
-                    GmUtility.setPosition(gmapContext, new google.maps.LatLng(gmapContext.location.lat(), $(this).val()), function(context) {
+                    GmUtility.setPosition(gmapContext, new google.maps.LatLng(gmapContext.location.lat(), longitudeInputValue), function(context) {
                         context.settings.onchanged.apply(gmapContext.domContainer, [ GmUtility.locationFromLatLng(context.location), context.radius, false ]);
+                        updateInputValues(gmapContext.settings.inputBinding, gmapContext);
                     });
                 });
             }
@@ -290,27 +313,51 @@
                 return;
             }
             var settings = $.extend({}, $.fn.locationpicker.defaults, options);
-            var gmapContext = new GMapContext(this, {
+            var gmapContext = new GMapContext(this, $.extend({}, settings.mapOptions, {
                 zoom: settings.zoom,
                 center: new google.maps.LatLng(settings.location.latitude, settings.location.longitude),
-                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                mapTypeId: settings.mapTypeId,
                 mapTypeControl: false,
+                styles: settings.styles,
                 disableDoubleClickZoom: false,
                 scrollwheel: settings.scrollwheel,
                 streetViewControl: false,
                 radius: settings.radius,
                 locationName: settings.locationName,
                 settings: settings,
+                autocompleteOptions: settings.autocompleteOptions,
+                addressFormat: settings.addressFormat,
                 draggable: settings.draggable,
-                markerIcon: settings.markerIcon
-            });
+                markerIcon: settings.markerIcon,
+                markerDraggable: settings.markerDraggable,
+                markerVisible: settings.markerVisible
+            }));
             $target.data("locationpicker", gmapContext);
-            google.maps.event.addListener(gmapContext.marker, "dragend", function(event) {
+            function displayMarkerWithSelectedArea() {
                 GmUtility.setPosition(gmapContext, gmapContext.marker.position, function(context) {
                     var currentLocation = GmUtility.locationFromLatLng(gmapContext.location);
-                    context.settings.onchanged.apply(gmapContext.domContainer, [ currentLocation, context.radius, true ]);
                     updateInputValues(gmapContext.settings.inputBinding, gmapContext);
+                    context.settings.onchanged.apply(gmapContext.domContainer, [ currentLocation, context.radius, true ]);
                 });
+            }
+            if (settings.markerInCenter) {
+                gmapContext.map.addListener("bounds_changed", function() {
+                    if (!gmapContext.marker.dragging) {
+                        gmapContext.marker.setPosition(gmapContext.map.center);
+                        updateInputValues(gmapContext.settings.inputBinding, gmapContext);
+                    }
+                });
+                gmapContext.map.addListener("idle", function() {
+                    if (!gmapContext.marker.dragging) {
+                        displayMarkerWithSelectedArea();
+                    }
+                });
+            }
+            google.maps.event.addListener(gmapContext.marker, "drag", function(event) {
+                updateInputValues(gmapContext.settings.inputBinding, gmapContext);
+            });
+            google.maps.event.addListener(gmapContext.marker, "dragend", function(event) {
+                displayMarkerWithSelectedArea();
             });
             GmUtility.setPosition(gmapContext, new google.maps.LatLng(settings.location.latitude, settings.location.longitude), function(context) {
                 updateInputValues(settings.inputBinding, gmapContext);
@@ -327,6 +374,9 @@
         locationName: "",
         radius: 500,
         zoom: 15,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        styles: [],
+        mapOptions: {},
         scrollwheel: true,
         inputBinding: {
             latitudeInput: null,
@@ -336,17 +386,23 @@
         },
         enableAutocomplete: false,
         enableAutocompleteBlur: false,
+        autocompleteOptions: null,
+        addressFormat: "postal_code",
         enableReverseGeocode: true,
         draggable: true,
         onchanged: function(currentLocation, radius, isMarkerDropped) {},
         onlocationnotfound: function(locationName) {},
         oninitialized: function(component) {},
-        markerIcon: undefined
+        markerIcon: undefined,
+        markerDraggable: true,
+        markerVisible: true
     };
 })(jQuery);;
 'use strict';
 
 System.register('avatar4eg/geotags/addGeotagsList', ['flarum/extend', 'flarum/app', 'flarum/components/CommentPost', 'flarum/helpers/icon', 'flarum/helpers/punctuateSeries', 'avatar4eg/geotags/models/Geotag', 'avatar4eg/geotags/components/GeotagModal'], function (_export, _context) {
+    "use strict";
+
     var extend, app, CommentPost, icon, punctuateSeries, Geotag, GeotagModal;
 
     _export('default', function () {
@@ -394,6 +450,8 @@ System.register('avatar4eg/geotags/addGeotagsList', ['flarum/extend', 'flarum/ap
 'use strict';
 
 System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app', 'flarum/components/Modal', 'flarum/components/FieldSet', 'flarum/components/Button'], function (_export, _context) {
+    "use strict";
+
     var app, Modal, FieldSet, Button, GeotagCreateModal;
     return {
         setters: [function (_flarumApp) {
@@ -411,7 +469,7 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
 
                 function GeotagCreateModal() {
                     babelHelpers.classCallCheck(this, GeotagCreateModal);
-                    return babelHelpers.possibleConstructorReturn(this, Object.getPrototypeOf(GeotagCreateModal).apply(this, arguments));
+                    return babelHelpers.possibleConstructorReturn(this, (GeotagCreateModal.__proto__ || Object.getPrototypeOf(GeotagCreateModal)).apply(this, arguments));
                 }
 
                 babelHelpers.createClass(GeotagCreateModal, [{
@@ -419,6 +477,7 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                     value: function init() {
                         this.textAreaObj = this.props.textAreaObj;
                         this.loading = false;
+                        this.mapField = null;
 
                         this.geotagData = {
                             title: m.prop(app.translator.trans('avatar4eg-geotags.forum.create_modal.default_title')[0]),
@@ -444,7 +503,7 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                     key: 'content',
                     value: function content() {
                         return [m('div', { className: 'Modal-body' }, [m('div', { className: 'map-form-container' }, [m('form', { onsubmit: this.onsubmit.bind(this), config: this.loadLocationPicker.bind(this) }, [m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.title_label')), m('input', {
-                            className: 'FormControl Map-address-title',
+                            className: 'FormControl Map-title',
                             value: this.geotagData.title(),
                             oninput: m.withAttr('value', this.geotagData.title)
                         })]), m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.address_label')), m('input', {
@@ -457,12 +516,20 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                             })]), m('div', { className: 'Form-group' }, [m('label', {}, app.translator.trans('avatar4eg-geotags.forum.create_modal.longitude_label')), m('input', {
                                 className: 'FormControl Map-coordinates-lng'
                             })])]
-                        }), Button.component({
-                            type: 'submit',
-                            className: 'Button Button--primary',
-                            children: app.translator.trans('avatar4eg-geotags.forum.create_modal.save_button'),
-                            loading: this.loading,
-                            disabled: this.geotagData.title() === '' || this.geotagData.title() === null
+                        }), FieldSet.component({
+                            className: 'Buttons',
+                            children: [Button.component({
+                                type: 'submit',
+                                className: 'Button Button--primary',
+                                children: app.translator.trans('avatar4eg-geotags.forum.create_modal.save_button'),
+                                loading: this.loading,
+                                disabled: this.geotagData.title() === '' || this.geotagData.title() === null
+                            }), Button.component({
+                                className: 'Button Map-address-locate',
+                                icon: 'map-marker',
+                                children: app.translator.trans('avatar4eg-geotags.forum.create_modal.locate_button'),
+                                onclick: this.getLocation.bind(this)
+                            })]
                         })])])])];
                     }
                 }, {
@@ -491,10 +558,15 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                     }
                 }, {
                     key: 'getLocation',
-                    value: function getLocation(map_field) {
+                    value: function getLocation() {
+                        var parent = this;
                         if ('geolocation' in navigator) {
                             navigator.geolocation.getCurrentPosition(function (position) {
-                                map_field.locationpicker('location', { latitude: position.coords.latitude, longitude: position.coords.longitude });
+                                parent.mapField.locationpicker('location', { latitude: position.coords.latitude, longitude: position.coords.longitude });
+                                parent.geotagData.lat(position.coords.latitude);
+                                parent.geotagData.lng(position.coords.longitude);
+                                var addressComponents = parent.mapField.locationpicker('map').location.addressComponents;
+                                parent.geotagData.country(addressComponents.country);
                             });
                         }
                     }
@@ -502,8 +574,8 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                     key: 'loadLocationPicker',
                     value: function loadLocationPicker(element) {
                         var parent = this;
-                        var map_field = $(element).find('.Map-field');
-                        map_field.locationpicker({
+                        parent.mapField = $(element).find('.Map-field');
+                        parent.mapField.locationpicker({
                             location: { latitude: parent.geotagData.lat(), longitude: parent.geotagData.lng() },
                             radius: 0,
                             inputBinding: {
@@ -521,10 +593,8 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
                         });
 
                         $('#modal').on('shown.bs.modal', function () {
-                            map_field.locationpicker('autosize');
+                            parent.mapField.locationpicker('autosize');
                         });
-
-                        this.getLocation(map_field);
                     }
                 }]);
                 return GeotagCreateModal;
@@ -537,6 +607,8 @@ System.register('avatar4eg/geotags/components/GeotagCreateModal', ['flarum/app',
 'use strict';
 
 System.register('avatar4eg/geotags/components/GeotagListModal', ['flarum/app', 'flarum/components/Modal', 'flarum/components/Button', 'flarum/components/FieldSet', 'avatar4eg/geotags/components/GeotagModal', 'avatar4eg/geotags/components/GeotagCreateModal'], function (_export, _context) {
+    "use strict";
+
     var app, Modal, Button, FieldSet, GeotagModal, GeotagCreateModal, GeotagListModal;
     return {
         setters: [function (_flarumApp) {
@@ -558,7 +630,7 @@ System.register('avatar4eg/geotags/components/GeotagListModal', ['flarum/app', '
 
                 function GeotagListModal() {
                     babelHelpers.classCallCheck(this, GeotagListModal);
-                    return babelHelpers.possibleConstructorReturn(this, Object.getPrototypeOf(GeotagListModal).apply(this, arguments));
+                    return babelHelpers.possibleConstructorReturn(this, (GeotagListModal.__proto__ || Object.getPrototypeOf(GeotagListModal)).apply(this, arguments));
                 }
 
                 babelHelpers.createClass(GeotagListModal, [{
@@ -623,6 +695,8 @@ System.register('avatar4eg/geotags/components/GeotagListModal', ['flarum/app', '
 'use strict';
 
 System.register('avatar4eg/geotags/components/GeotagModal', ['flarum/components/Modal'], function (_export, _context) {
+    "use strict";
+
     var Modal, GeotagModal;
     return {
         setters: [function (_flarumComponentsModal) {
@@ -634,7 +708,7 @@ System.register('avatar4eg/geotags/components/GeotagModal', ['flarum/components/
 
                 function GeotagModal() {
                     babelHelpers.classCallCheck(this, GeotagModal);
-                    return babelHelpers.possibleConstructorReturn(this, Object.getPrototypeOf(GeotagModal).apply(this, arguments));
+                    return babelHelpers.possibleConstructorReturn(this, (GeotagModal.__proto__ || Object.getPrototypeOf(GeotagModal)).apply(this, arguments));
                 }
 
                 babelHelpers.createClass(GeotagModal, [{
@@ -699,6 +773,8 @@ System.register('avatar4eg/geotags/components/GeotagModal', ['flarum/components/
 'use strict';
 
 System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'flarum/app', 'flarum/helpers/icon', 'flarum/components/TextEditor', 'avatar4eg/geotags/components/GeotagListModal', 'avatar4eg/geotags/components/GeotagCreateModal'], function (_export, _context) {
+    "use strict";
+
     var extend, app, icon, TextEditor, GeotagListModal, GeotagCreateModal;
 
     _export('default', function () {
@@ -757,6 +833,8 @@ System.register('avatar4eg/geotags/extendEditorControls', ['flarum/extend', 'fla
 'use strict';
 
 System.register('avatar4eg/geotags/extendPostData', ['flarum/extend', 'flarum/components/ComposerBody', 'flarum/components/EditPostComposer', 'flarum/components/ReplyComposer', 'flarum/components/DiscussionComposer'], function (_export, _context) {
+    "use strict";
+
     var extend, override, ComposerBody, EditPostComposer, ReplyComposer, DiscussionComposer;
 
     _export('default', function () {
@@ -833,6 +911,8 @@ System.register('avatar4eg/geotags/extendPostData', ['flarum/extend', 'flarum/co
 'use strict';
 
 System.register('avatar4eg/geotags/main', ['flarum/extend', 'flarum/app', 'flarum/models/Post', 'flarum/Model', 'avatar4eg/geotags/models/Geotag', 'avatar4eg/geotags/addGeotagsList', 'avatar4eg/geotags/extendPostData', 'avatar4eg/geotags/extendEditorControls'], function (_export, _context) {
+    "use strict";
+
     var extend, override, app, Post, Model, Geotag, addGeotagsList, extendPostData, extendEditorControls;
     return {
         setters: [function (_flarumExtend) {
@@ -869,6 +949,8 @@ System.register('avatar4eg/geotags/main', ['flarum/extend', 'flarum/app', 'flaru
 'use strict';
 
 System.register('avatar4eg/geotags/models/Geotag', ['flarum/Model', 'flarum/utils/mixin'], function (_export, _context) {
+    "use strict";
+
     var Model, mixin, Geotag;
     return {
         setters: [function (_flarumModel) {
@@ -882,7 +964,7 @@ System.register('avatar4eg/geotags/models/Geotag', ['flarum/Model', 'flarum/util
 
                 function Geotag() {
                     babelHelpers.classCallCheck(this, Geotag);
-                    return babelHelpers.possibleConstructorReturn(this, Object.getPrototypeOf(Geotag).apply(this, arguments));
+                    return babelHelpers.possibleConstructorReturn(this, (Geotag.__proto__ || Object.getPrototypeOf(Geotag)).apply(this, arguments));
                 }
 
                 return Geotag;

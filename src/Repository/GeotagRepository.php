@@ -3,7 +3,6 @@ namespace Avatar4eg\Geotags\Repository;
 
 use Avatar4eg\Geotags\Geotag;
 use Flarum\Core\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class GeotagRepository
 {

@@ -11,6 +11,7 @@ avatar4eg-geotags:
             default_title: Новое место
             title_label: Название
             address_label: Адрес
+            locate_button: Определить
             coordinates_label: Координаты
             latitude_label: Широта
             longitude_label: Долгота

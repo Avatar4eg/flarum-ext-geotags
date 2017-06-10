@@ -2,8 +2,8 @@
 namespace Avatar4eg\Geotags\Listener;
 
 use DirectoryIterator;
-use Flarum\Event\ConfigureClientView;
 use Flarum\Event\ConfigureLocales;
+use Flarum\Event\ConfigureWebApp;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Illuminate\Contracts\Events\Dispatcher;
 
@@ -27,14 +27,14 @@ class AddClientAssets
      */
     public function subscribe(Dispatcher $events)
     {
-        $events->listen(ConfigureClientView::class, [$this, 'addAssets']);
+        $events->listen(ConfigureWebApp::class, [$this, 'addAssets']);
         $events->listen(ConfigureLocales::class, [$this, 'addLocales']);
     }
 
     /**
-     * @param ConfigureClientView $event
+     * @param ConfigureWebApp $event
      */
-    public function addAssets(ConfigureClientView $event)
+    public function addAssets(ConfigureWebApp $event)
     {
         if ($event->isForum() && $this->settings->get('avatar4eg.geotags-gmaps-key') && $this->settings->get('avatar4eg.geotags-gmaps-key') !== '') {
             $event->addAssets([
@@ -43,7 +43,7 @@ class AddClientAssets
             ]);
             $event->addBootstrapper('avatar4eg/geotags/main');
 
-            $event->view->addFootString('<script src="//maps.google.com/maps/api/js?key=' . $this->settings->get('avatar4eg.geotags-gmaps-key') . '&sensor=false&libraries=places" type="text/javascript"></script>');
+            $event->view->addHeadString('<script type="text/javascript" src="//maps.google.com/maps/api/js?key=' . $this->settings->get('avatar4eg.geotags-gmaps-key') . '&amp;libraries=places"></script>');
         }
 
         if ($event->isAdmin()) {
@@ -60,7 +60,7 @@ class AddClientAssets
     public function addLocales(ConfigureLocales $event)
     {
         foreach (new DirectoryIterator(__DIR__ .'/../../locale') as $file) {
-            if ($file->isFile() && in_array($file->getExtension(), ['yml', 'yaml'], false)) {
+            if ($file->isFile() && in_array($file->getExtension(), ['yml', 'yaml'], true)) {
                 $event->locales->addTranslations($file->getBasename('.' . $file->getExtension()), $file->getPathname());
             }
         }

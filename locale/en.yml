@@ -11,6 +11,7 @@ avatar4eg-geotags:
             default_title: New place
             title_label: Title
             address_label: Address
+            locate_button: Locate
             coordinates_label: Coordinates
             latitude_label: Latitude
             longitude_label: Longitude

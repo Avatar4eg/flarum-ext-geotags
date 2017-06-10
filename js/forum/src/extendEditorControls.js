@@ -20,8 +20,8 @@ export default function() {
     {
         if (!app.forum.attribute('canAddGeotags')) return;
 
-        var textAreaObj = this;
-        var geotagsNum = textAreaObj.geotags && textAreaObj.geotags.length ? textAreaObj.geotags.length : 0;
+        let textAreaObj = this;
+        let geotagsNum = textAreaObj.geotags && textAreaObj.geotags.length ? textAreaObj.geotags.length : 0;
 
         items.add('avatar4eg-geotags',
             m('div', {

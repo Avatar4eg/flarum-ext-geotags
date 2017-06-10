@@ -1,33 +1,59 @@
-.Map-coordinates {
-  ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+.GeotagCreateModal {
+  .Map-coordinates {
+    ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
+    li {
+      display: inline;
+      width: 50%;
+      float: left;
+      padding-right: 10px;
+    }
+    li:last-child {
+      padding-right: 0;
+    }
+    margin-bottom: 20px;
   }
-  li {
-    display: inline;
-    width: 50%;
-    float: left;
-    padding-right: 10px;
+  .Buttons {
+    ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
+    li {
+      display: inline;
+    }
+    li:first-child {
+      float: left;
+    }
+    li:last-child {
+      float: right;
+    }
   }
-  li:last-child {
-    padding-right: 0;
-  }
-  margin-bottom: 20px;
 }
 
-.Geotags-list {
-  ul {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+.GeotagListModal {
+  .Geotags-list {
+    ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
+    .icon {
+      vertical-align: 1px;
+    }
+    margin-bottom: 20px;
   }
-  .icon {
-    vertical-align: 1px;
-  }
-  margin-bottom: 20px;
 }
 
-.gm-style img {max-width: none;}
-.gm-style label {width: auto; display:inline;}
-.pac-container {z-index:2000;}
+.gm-style img {
+  max-width: none;
+}
+.gm-style label {
+  width: auto; display:inline;
+}
+.pac-container {
+  z-index:2000;
+}

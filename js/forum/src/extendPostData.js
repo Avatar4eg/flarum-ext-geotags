@@ -6,10 +6,10 @@ import DiscussionComposer from 'flarum/components/DiscussionComposer';
 
 export default function() {
     ComposerBody.prototype.submitGeotags = function (originalSubmit) {
-        var geotags = this.editor.geotags;
-        var originalGeotags = this.editor.originalGeotags;
+        let geotags = this.editor.geotags;
+        let originalGeotags = this.editor.originalGeotags;
 
-        var deferreds = [];
+        let deferreds = [];
         this.loading = true;
         $.each(originalGeotags, function(index, geotag) {
             if (!geotags.includes(geotag)) {

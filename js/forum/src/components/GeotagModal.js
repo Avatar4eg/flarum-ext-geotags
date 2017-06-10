@@ -26,10 +26,10 @@ export default class GeotagModal extends Modal {
     }
 
     loadMap(element) {
-        var latitude = this.geotag.lat();
-        var longitude = this.geotag.lng();
-        var coords = new google.maps.LatLng(latitude, longitude);
-        var mapOptions = {
+        let latitude = this.geotag.lat();
+        let longitude = this.geotag.lng();
+        let coords = new google.maps.LatLng(latitude, longitude);
+        let mapOptions = {
             zoom: 15,
             center: coords,
             mapTypeControl: true,
@@ -38,10 +38,10 @@ export default class GeotagModal extends Modal {
             },
             mapTypeId: google.maps.MapTypeId.ROADMAP
         };
-        var map = new google.maps.Map(
+        let map = new google.maps.Map(
             element, mapOptions
         );
-        var marker = new google.maps.Marker({
+        let marker = new google.maps.Marker({
             position: coords,
             map: map,
             title: this.geotag.title()
